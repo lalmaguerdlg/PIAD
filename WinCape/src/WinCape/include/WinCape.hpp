@@ -119,11 +119,13 @@ namespace WinCape
 	{
 	private:
 		void bitBlt(const BitmapHandle& bitmapHandle, const DeviceContextHandle& destiny, const Rect& rect);
+		void stretchBlt(const BitmapHandle& bitmapHandle, const DeviceContextHandle& destiny, const Rect& srcRect, const Rect& destRect);
 	public:
 		DeviceContext();
 		DeviceContext(const DeviceContextHandle& value);
 		//void drawBitmap(const Bitmap& bitmap);
 		void drawBitmap(const Bitmap& bitmap, const Int2& padding = Int2{});
+		void drawBitmapResized(const Bitmap& bitmap, const Rect& destRect);
 		//drawBitmapClipped...
 		friend Window;
 	};

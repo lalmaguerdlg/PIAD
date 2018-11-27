@@ -27,6 +27,7 @@ private:
 		fileMenu.addItems({L"Abrir imagen", L"Guardar imagen", L"Salir"});
 		menu.addSubMenu(fileMenu, L"Archivo");
 		attachMenu(menu);
+
 		addButton(buttonA, L"Botón", Int2{ 100, 100 });
 		addButton(buttonB, L"Test", Int2{ 140, 140 }); 
 		addRadioButton(
@@ -38,25 +39,31 @@ private:
 			Int2{ 200,200 }
 		);
 		//Loading the image...
-		//image.load(L"c:\\Users\\w7\\Pictures\\chrono.bmp");
+		image.load(L"W:\\Repos\\PIAD\\PIAD\\src\\Untitled.bmp");
 		buffer.resize(image.dimension().x * image.dimension().y);
 		//Event listening
 		buttonA.onClick([&](Event e) {this->onButtonAClick(e);});
 		buttonB.onClick([&](Event e) {this->onButtonBClick(e);});
 		radioButtonA.onClick([&](Event e) {this->onRadioButtonAClick(e);});
 		fileMenu.onItemSelect([&](Event e) {this->onFileMenuSelect(e); });
+		srand(GetTickCount());
 	}
 	void onDraw(DeviceContext deviceContext) override
 	{
-		/*
+		
 		image.clonePixels(&buffer[0]);
-		for (auto& pixel : buffer) 
-		{
-			pixel.b += 4;
+		
+		auto randRange = [](const float& min, const float& max) {
+			return ((float)rand() / (float)RAND_MAX) * (max - min) + min;
+		};
+
+		for (auto& pixel : buffer)
+		{	
+			pixel.r += 25;
 		}
 		image.setPixels(&buffer[0]);
-		deviceContext.drawBitmap(image);
-		*/
+		deviceContext.drawBitmapResized(image, Rect{ Int2{0, 0}, Int2{200, 200} });
+
 	}
 	void onButtonAClick(Event e)
 	{

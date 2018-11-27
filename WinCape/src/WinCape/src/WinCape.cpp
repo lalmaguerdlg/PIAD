@@ -226,6 +226,14 @@ namespace WinCape
 	//	Int2 bitmapSize = bitmap.dimension();
 	//	drawBitmap(bitmap, Rect{ 0, 0, bitmapSize });
 	//}
+
+	void DeviceContext::stretchBlt(const BitmapHandle& bitmapHandle, const DeviceContextHandle& destiny, const Rect& srcRect, const Rect& destRect)
+	{
+		BitmapHandle hbmOld = (BitmapHandle)SelectObject(destiny, bitmapHandle);
+		StretchBlt(handle(), destRect.position.x, destRect.position.y, destRect.size.x, destRect.size.y,
+			destiny, srcRect.position.x, srcRect.position.y, srcRect.size.x, srcRect.size.y, SRCCOPY);
+		SelectObject(destiny, hbmOld);
+	}
 	void DeviceContext::drawBitmap(const Bitmap& bitmap, const Int2& padding)
 	{
 		DeviceContextHandle deviceContextMemory = CreateCompatibleDC(handle());
@@ -233,6 +241,15 @@ namespace WinCape
 		bitBlt(bitmap.handle(), deviceContextMemory, Rect{padding, bitmapSize});
 		DeleteDC(deviceContextMemory);
 	}
+
+	void DeviceContext::drawBitmapResized(const Bitmap& bitmap, const Rect& destRect)
+	{
+		DeviceContextHandle deviceContextMemory = CreateCompatibleDC(handle());
+		Int2 bitmapSize = bitmap.dimension();
+		stretchBlt(bitmap.handle(), deviceContextMemory, Rect{ Int2{0, 0}, bitmapSize },  destRect);
+		DeleteDC(deviceContextMemory);
+	}
+
 	//-------------------------------------------------------------------------
 	//Bitmap
 	//-------------------------------------------------------------------------
