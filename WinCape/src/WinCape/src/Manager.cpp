@@ -62,6 +62,15 @@ namespace WinCape
 				ManagerImpl::instance().doCallback(EventKey{ commandHandle, controlMessage }, wParam, lParam);
 			}
 			break;
+			case WindowMessages::Notify:
+			{
+				LPNMHDR notification = ((LPNMHDR)lParam);
+				
+				Base::Handle commandHandle = (Base::Handle)notification->hwndFrom;
+				WindowMessage controlMessage = notification->code;
+				ManagerImpl::instance().doCallback(EventKey{ commandHandle, controlMessage }, wParam, lParam);
+			}
+			break;
 			case WindowMessages::MenuCommand:
 			{
 				Base::Handle commandHandle = (Base::Handle)lParam;

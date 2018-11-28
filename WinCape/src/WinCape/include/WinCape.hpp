@@ -16,6 +16,7 @@ namespace WinCape
 	class Icon;
 	class DeviceContext;
 	class Bitmap;
+	class ListView;
 	template<typename T> class WINCAPE_API HasHandle
 	{
 	public:
@@ -45,6 +46,7 @@ namespace WinCape
 		void addButton(Button& button, const wchar_t* text, const Int2& position, const Int2& size = Defaults::ButtonSize);
 		void addRadioButton(std::initializer_list<std::pair<Reference<RadioButton>, const wchar_t*>> radioButtonList, const Int2& position, const Int2& padding = Defaults::RadioButtonPadding);
 		void attachMenu(Menu& menu);
+		void addListView(ListView & listView, const Rect & dimensions, const Int2 & padding = {});
 		void onPaint(const EventCallback& callback);
 		void redraw();
 		void close();
@@ -58,6 +60,8 @@ namespace WinCape
 	public:
 		friend Window;
 		void createFromResource(BaseHandle parent, int resource);
+		void show();
+		void hide();
 	};
 	class WINCAPE_API Button : public Control
 	{
@@ -80,6 +84,22 @@ namespace WinCape
 	public:
 		void addString(const wchar_t* string);
 		int count();
+	};
+	class WINCAPE_API ListView final : public Control
+	{
+	public:
+		int count();
+		void addColumn(int index, char * headerText, int width = 0);
+		LV_ITEM getItem(int index);
+		void addRow(int row, std::vector<std::wstring> cols);
+		void addRow(int row, wchar_t * text);
+		void setRow(int row, int col, wchar_t * text);
+		void addCheckboxes();
+
+		void onItemChecked(const EventCallback& callback);
+		void clear();
+		int selectedRow();
+		void setItemChecked(int index, bool checked);
 	};
 	class WINCAPE_API Menu final : public HasHandle<MenuHandle>
 	{
@@ -125,7 +145,7 @@ namespace WinCape
 		DeviceContext(const DeviceContextHandle& value);
 		//void drawBitmap(const Bitmap& bitmap);
 		void drawBitmap(const Bitmap& bitmap, const Int2& padding = Int2{});
-		void drawBitmapResized(const Bitmap& bitmap, const Rect& destRect);
+		void drawBitmapStreched(const Bitmap & bitmap, const Rect & destRect);
 		//drawBitmapClipped...
 		friend Window;
 	};

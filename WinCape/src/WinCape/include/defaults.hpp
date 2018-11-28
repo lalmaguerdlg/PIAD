@@ -15,6 +15,8 @@ namespace WinCape
 		static constexpr Int2 RadioButtonPadding = Int2{ 0, 32 };
 		static constexpr ButtonStyle DefButtonStyle = WindowStyles::TabStop | WindowStyles::Visible | WindowStyles::Child | ButtonStyles::PushButton;
 		static constexpr ButtonStyle RadioButtonStyle = WindowStyles::TabStop | WindowStyles::Visible | WindowStyles::Child | ButtonStyles::AutoRadioButton;
+		static constexpr int ListViewMinColumnWidth = 50;
+		static constexpr int ListViewColumnWidth = 100;
 	};
 }
 #endif // !DEFAULTS_HPP

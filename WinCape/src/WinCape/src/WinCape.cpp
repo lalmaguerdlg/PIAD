@@ -2,6 +2,8 @@
 #include "../include/Manager.hpp"
 #include <vector>
 #include <map>
+
+
 using namespace std;
 //-------------------------------------------------------------------------
 //Application
@@ -106,6 +108,17 @@ namespace WinCape
 		SetMenu(handle(), menu.handle());
 		DrawMenuBar(handle());
 	}
+	void Window::addListView(ListView & listView, const Rect& dimensions, const Int2& padding)
+	{
+		// Create the list-view window in report view with label editing enabled.
+		Handle listViewHandle;
+		const ListViewStyle style = WindowStyles::Child | WindowStyles::Visible | ListViewStyles::Report;
+		Rect dimensions_ = dimensions;
+		dimensions_.position.x += padding.x;
+		dimensions_.position.y += padding.y;
+		listViewHandle = Manager::instance().createHandle(ClassNames::ListView, L"", style, dimensions_, handle());
+		listView.handle(listViewHandle);
+	}
 	void Window::onPaint(const EventCallback& callback)
 	{
 		//TODO: declare button notifications in defines
@@ -134,6 +147,14 @@ namespace WinCape
 	//-------------------------------------------------------------------------
 	void Control::createFromResource(BaseHandle parent, int resource) {
 		handle(GetDlgItem(parent, resource));
+	}
+	void Control::show()
+	{
+		ShowWindow(handle(), ShowCommands::Show);
+	}
+	void Control::hide()
+	{
+		ShowWindow(handle(), ShowCommands::Hide);
 	}
 	//-------------------------------------------------------------------------
 	//Button
@@ -242,7 +263,7 @@ namespace WinCape
 		DeleteDC(deviceContextMemory);
 	}
 
-	void DeviceContext::drawBitmapResized(const Bitmap& bitmap, const Rect& destRect)
+	void DeviceContext::drawBitmapStreched(const Bitmap& bitmap, const Rect& destRect)
 	{
 		DeviceContextHandle deviceContextMemory = CreateCompatibleDC(handle());
 		Int2 bitmapSize = bitmap.dimension();
@@ -320,4 +341,88 @@ namespace WinCape
 	//template class HasHandle<DeviceContextHandle>;
 	template class HasHandle<MenuHandle>;
 	template class HasHandle<BitmapHandle>;
+
+
+
+	int ListView::count()
+	{
+		return ListView_GetItemCount(handle());
+	}
+
+	void ListView::addColumn(int index, char * headerText, int width)
+	{
+		LVCOLUMNA column = {};
+		column.mask = LVCF_FMT | LVCF_TEXT | LVCF_WIDTH | LVCF_MINWIDTH | LVCF_SUBITEM;
+		column.fmt = LVCFMT_CENTER;
+		column.pszText = headerText;
+		column.cx = width > 0 ? width : Defaults::ListViewColumnWidth;
+		column.cxMin = Defaults::ListViewMinColumnWidth;
+		column.iSubItem = index;
+		ListView_InsertColumn(handle(), index, &column);
+	}
+
+
+	LV_ITEM ListView::getItem(int index) {
+		LV_ITEM item;
+		item.iItem = index;
+		ListView_GetItem(handle(), &item);
+		return item; 
+	}
+
+	/* TODO: Make a better abstraction for a row class. */
+	void ListView::addRow(int row, std::vector<std::wstring> cols) {
+		LV_ITEM item;
+		item.mask = LVIF_TEXT;
+		item.iItem = row;
+		item.iSubItem = 0;
+		item.pszText = (wchar_t *)cols[0].c_str();
+		ListView_InsertItem(handle(), &item);
+		if (cols.size() > 1) {
+			for (size_t i = 1; i < cols.size(); i++) {
+				item.iSubItem = i;
+				item.pszText = (wchar_t *)cols[i].c_str();
+				ListView_SetItem(handle(), &item);
+			}
+		}
+	}
+
+	void ListView::addRow(int row, wchar_t * text) {
+		LV_ITEM item;
+		item.mask = LVIF_TEXT;
+		item.iItem = row;
+		item.iSubItem = 0;
+		item.pszText = text;
+		ListView_InsertItem(handle(), &item);
+	}
+
+	void ListView::setRow(int row, int col, wchar_t * text) {
+		LV_ITEM item;
+		item.mask = LVIF_TEXT;
+		item.iItem = row;
+		item.iSubItem = col;
+		item.pszText = text;
+		ListView_SetItem(handle(), &item);
+	}
+
+	void ListView::addCheckboxes()
+	{
+		ListView_SetExtendedListViewStyle(handle(), ListViewStyles::Extended::Checkboxes | ListViewStyles::Extended::FullRowSelect);
+	}
+
+	void ListView::onItemChecked(const EventCallback & callback)
+	{
+		Manager::instance().listenEvent((Base::Handle)handle(), ListViewMessages::ItemChanged, callback);
+	}
+
+	void ListView::clear() {
+		ListView_DeleteAllItems(handle());
+	}
+
+	int ListView::selectedRow() {
+		return ListView_GetNextItem(handle(), -1, LVNI_SELECTED);
+	}
+
+	void ListView::setItemChecked(int index, bool checked) {
+		ListView_SetCheckState(handle(), index, checked);
+	}
 }
