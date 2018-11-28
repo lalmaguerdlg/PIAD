@@ -43,14 +43,20 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(SolutionDir)WinCape\src\;$(IncludePath)</IncludePath>
+    <IncludePath>C:\OpenCV\OpenCV-3.1.0\opencv\build\include;$(SolutionDir)WinCape\src\;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)bin\$(Configuration)-$(Platform)\$(ProjectName)\</OutDir>
     <IntDir>$(SolutionDir)bin-int\$(Configuration)-$(Platform)\$(ProjectName)\</IntDir>
+    <ExecutablePath>C:\OpenCV\OpenCV-3.1.0\opencv\build\x64\vc14\bin;C:\OpenCV\OpenCV-3.1.0\opencv\build\bin;$(ExecutablePath)</ExecutablePath>
+    <LibraryPath>C:\OpenCV\OpenCV-3.1.0\opencv\build\x64\vc14\bin;C:\OpenCV\OpenCV-3.1.0\opencv\build\x64\vc14\lib;$(LibraryPath)</LibraryPath>
+    <TargetName>ImDuck</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(SolutionDir)bin\$(Configuration)-$(Platform)\$(ProjectName)\</OutDir>
     <IntDir>$(SolutionDir)bin-int\$(Configuration)-$(Platform)\$(ProjectName)\</IntDir>
-    <IncludePath>$(SolutionDir)WinCape\src\;$(IncludePath)</IncludePath>
+    <IncludePath>C:\OpenCV\OpenCV-3.1.0\opencv\build\include;$(SolutionDir)WinCape\src\;$(IncludePath)</IncludePath>
+    <ExecutablePath>C:\OpenCV\OpenCV-3.1.0\opencv\build\x64\vc14\bin;C:\OpenCV\OpenCV-3.1.0\opencv\build\bin;$(ExecutablePath)</ExecutablePath>
+    <LibraryPath>C:\OpenCV\OpenCV-3.1.0\opencv\build\x64\vc14\bin;C:\OpenCV\OpenCV-3.1.0\opencv\build\x64\vc14\lib;$(LibraryPath)</LibraryPath>
+    <TargetName>ImDuck</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -60,7 +66,7 @@
       <ConformanceMode>true</ConformanceMode>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opencv_world310d.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -75,6 +81,7 @@
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>opencv_world310.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

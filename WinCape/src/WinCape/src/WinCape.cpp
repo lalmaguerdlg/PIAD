@@ -126,7 +126,7 @@ namespace WinCape
 	}
 	void Window::redraw()
 	{
-		RedrawWindow(handle(), 0, 0, RDW_INVALIDATE | RDW_UPDATENOW);
+		RedrawWindow(handle(), 0, 0, RDW_INVALIDATE);
 	}
 	DeviceContext Window::deviceContext()
 	{
@@ -250,6 +250,8 @@ namespace WinCape
 
 	void DeviceContext::stretchBlt(const BitmapHandle& bitmapHandle, const DeviceContextHandle& destiny, const Rect& srcRect, const Rect& destRect)
 	{
+		SetStretchBltMode(handle(), COLORONCOLOR);
+		
 		BitmapHandle hbmOld = (BitmapHandle)SelectObject(destiny, bitmapHandle);
 		StretchBlt(handle(), destRect.position.x, destRect.position.y, destRect.size.x, destRect.size.y,
 			destiny, srcRect.position.x, srcRect.position.y, srcRect.size.x, srcRect.size.y, SRCCOPY);

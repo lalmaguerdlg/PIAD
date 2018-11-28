@@ -2,6 +2,17 @@
 #include "SaveImage.hpp"
 #include "ValueSelectorDialog.hpp"
 
+static float randomRange(float min, float max) {
+	return ((float)rand() / (float)RAND_MAX) * (max - min) + min;
+}
+
+void MainWindow::stopAndWaitForThread()
+{
+	if (isLiveVideoOn) {
+		isLiveVideoOn = false;
+		liveThread.join();
+	}
+}
 
 void MainWindow::onCreate() {
 	show();
@@ -9,6 +20,7 @@ void MainWindow::onCreate() {
 	Menu::create(menu);
 	Menu::create(fileMenu);
 	Menu::create(filtersMenu);
+	Menu::create(cameraMenu);
 	Menu::create(pointFiltersMenu);
 	Menu::create(localFiltersMenu);
 	Menu::create(globalFiltersMenu);
@@ -50,15 +62,20 @@ void MainWindow::onCreate() {
 	filtersMenu.addSubMenu(localFiltersMenu, L"Filtros locales");
 	filtersMenu.addSubMenu(globalFiltersMenu, L"Filtros globales");
 	filtersMenu.addSubMenu(customFiltersMenu, L"Filtros extras");
+	cameraMenu.addItem(L"Tomar captura");
+	cameraMenu.addItem(L"Video en vivo");
+	cameraMenu.addItem(L"Grabar video.");
+	cameraMenu.addItem(L"Detectar personas.");
 
 	menu.addSubMenu(fileMenu, L"Archivo");
 	menu.addSubMenu(filtersMenu, L"Filtros");
+	menu.addSubMenu(cameraMenu, L"Camara");
 	attachMenu(menu);
 
 
 	fileMenu.onItemSelect([&](Event e) {this->onFileMenuSelect(e); });
 	//editMenu.onItemSelect([&](Event e) {if (imageLoaded) this->onEditMenuSelect(e); });
-	//cameraMenu.onItemSelect([&](Event e) {this->onCameraMenuSelect(e); });
+	cameraMenu.onItemSelect( [&](Event e) {this->onCameraMenuSelect(e); });
 	//detectionMenu.onItemSelect([&](Event e) {this->onDetectionMenuSelect(e); });
 	pointFiltersMenu.onItemSelect([&](Event e) { this->onPointFiltersMenuSelect(e); });
 	localFiltersMenu.onItemSelect([&](Event e) { this->onLocalFiltersMenuSelect(e); });
@@ -66,7 +83,7 @@ void MainWindow::onCreate() {
 	customFiltersMenu.onItemSelect([&](Event e) { this->onCustomFiltersMenuSelect(e); });
 
 
-	addButton(buttonLimpiar, L"Limpiar", Int2{ 550, 390 });
+	addButton(buttonLimpiar, L"Limpiar", Int2{ 410, 390 });
 	addButton(buttonEliminar, L"Eliminar", Int2{ 700, 390 });
 
 	/*addRadioButton(
@@ -109,7 +126,16 @@ void MainWindow::onCreate() {
 
 	//renderFilterBatch();
 
+	// Video Capture
+
+	hog.setSVMDetector(cv::HOGDescriptor::getDefaultPeopleDetector()); //Se carga el Support Vector Machine
+	const int color_count = 15;
+	for (int i = 0; i < 15; i++) {
+		colorList.push_back(cv::Scalar(randomRange(0, 255), randomRange(0, 255), randomRange(0, 255)));
+	}
 }
+
+
 
 void MainWindow::renderFilterBatch() {
 	int index = 0;
@@ -285,7 +311,38 @@ void MainWindow::onCustomFiltersMenuSelect(Event e) {
 	redraw();
 }
 
+void MainWindow::onCameraMenuSelect(Event e) {
+	int index = e.wparam;
+
+	switch (index) {
+	case 0: // Captura
+		snapshot();
+		break;
+	case 1: // Video en vivo
+		realTime();
+		break;
+	case 2: // Grabar
+		record();
+		break;
+	case 3: // Detectar personas
+		FilterElement element;
+		element.filter = duck::Filter::GHog;
+		addFilterToBatch(element);
+		drawAction = DrawAction::DrawImage;
+		redraw();
+		break;
+	}
+
+	//drawAction = DrawAction::DrawImage;
+	//redraw();
+}
+
+
 void MainWindow::loadImage() {
+	if (isLiveVideoOn) {
+		isLiveVideoOn = false;
+		liveThread.join();
+	}
 	std::wstring filename = getOpenFileName();
 	if (filename.length() > 0) {
 		image.load(&filename[0]);
@@ -300,9 +357,176 @@ void MainWindow::loadImage() {
 }
 
 void MainWindow::saveImage() {
+	if (isLiveVideoOn) {
+		isLiveVideoOn = false;
+		liveThread.join();
+	}
 	drawAction = DrawAction::SaveImage;
 	redraw();
 }
+
+void MainWindow::snapshot() {
+	if (isLiveVideoOn) {
+		isLiveVideoOn = false;
+		liveThread.join();
+	}
+	cap = cv::VideoCapture{ 0 };
+	cap.set(CV_CAP_PROP_FRAME_WIDTH, defaultCapDim.x);
+	cap.set(CV_CAP_PROP_FRAME_HEIGHT, defaultCapDim.y);
+	int frame_width = cap.get(CV_CAP_PROP_FRAME_WIDTH);
+	int frame_height = cap.get(CV_CAP_PROP_FRAME_HEIGHT);
+	capDimentions.x = frame_width;
+	capDimentions.y = frame_height;
+	cv::Mat frame;
+	cv::Mat converted;
+	image = Bitmap{ Int2{frame_width , frame_height} };
+	while (cap.isOpened()) {
+		cap >> frame;
+		if (frame.data) {
+			cv::cvtColor(frame, converted, cv::COLOR_RGB2RGBA);
+			cv::Mat dst = cv::Mat(converted.rows, converted.cols, CV_8UC4);
+			cv::flip(converted, dst, 0);
+
+			originalBuffer.resize(frame.cols, frame.rows);
+			originalBuffer.dataVector().assign((duck::UCharPixelBGR*)dst.datastart, (duck::UCharPixelBGR*)dst.dataend);
+			
+			drawAction = DrawAction::DrawImage;
+			redraw();
+			break;
+		}
+		else {
+			cv::waitKey(100);
+		}
+	}
+	cap.release();
+	cv::destroyWindow("Tomar captura");
+}
+
+void MainWindow::realTime() {
+	if (!isLiveVideoOn) {
+		isLiveVideoOn = true;
+		liveThread = std::thread([&]() { this->videoCaptureLoop(); });
+	}
+	else {
+		isLiveVideoOn = false;
+		liveThread.join();
+	}
+}
+
+namespace {
+	//Credits to JereJones function from:
+	//https://codereview.stackexchange.com/questions/419/converting-between-stdwstring-and-stdstring
+	std::string ws2s(const std::wstring& s)
+	{
+		int len;
+		int slength = (int)s.length() + 1;
+		len = WideCharToMultiByte(CP_ACP, 0, s.c_str(), slength, 0, 0, 0, 0);
+		std::string r(len, '\0');
+		WideCharToMultiByte(CP_ACP, 0, s.c_str(), slength, &r[0], len, 0, 0);
+		return r;
+	}
+
+	std::wstring getVideoSaveFileName(WinCape::Window::Handle parent) {
+		wchar_t filename[MAX_PATH] = L"";
+		OPENFILENAME openFileName = {};
+		openFileName.lStructSize = sizeof(OPENFILENAME);
+		openFileName.hwndOwner = parent;
+		openFileName.lpstrFilter = L"Avi Files (*.avi)\0*.avi";
+		openFileName.lpstrFile = filename;
+		openFileName.nMaxFile = sizeof(filename);
+		openFileName.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
+		openFileName.lpstrDefExt = (LPCWSTR)L"avi";
+		if (GetSaveFileName(&openFileName)) {
+			return std::wstring{ openFileName.lpstrFile };
+		}
+		return std::wstring{};
+	}
+
+	std::wstring getImageName(Window::Handle parent) {
+		wchar_t filename[MAX_PATH] = L"";
+		OPENFILENAME openFileName = {};
+		openFileName.lStructSize = sizeof(OPENFILENAME);
+		openFileName.hwndOwner = parent;
+		openFileName.lpstrFilter = L"Image Files (*.bmp;*.png;*.jpg;*.jpeg)\0*.bmp;*.png;*.jpg;*.jpeg";
+		openFileName.lpstrFile = filename;
+		openFileName.nMaxFile = sizeof(filename);
+		openFileName.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST;
+		if (GetOpenFileName(&openFileName)) {
+			return std::wstring{ openFileName.lpstrFile };
+		}
+		return std::wstring{};
+	}
+
+	void adjustPeopleRect(cv::Rect& out) {
+		out.x += cvRound(out.width * 0.1);
+		out.width = cvRound(out.width * 0.8);
+		out.y += cvRound(out.height * 0.07);
+		out.height = cvRound(out.height * 0.8);
+	}
+
+	cv::Scalar randomColor(cv::RNG& rng) {
+		return cv::Scalar(rng.uniform(0, 127) + 128, rng.uniform(0, 127) + 128, rng.uniform(0, 127) + 128);
+	}
+}
+
+void MainWindow::record() {
+
+	if (!isRecordingOn) {
+
+		isRecordingOn = true;
+		savedFrames = 0;
+
+		saveVideoFileName = getVideoSaveFileName(handle());
+		videoWriter = cv::VideoWriter();
+		videoWriter.open(ws2s(saveVideoFileName), CV_FOURCC('M', 'J', 'P', 'G'), 12, cv::Size{ 352, 288 });
+		if (!isLiveVideoOn) {
+			realTime();
+		}
+	}
+	else {
+		videoWriter.release();
+		isRecordingOn = false;
+		isLiveVideoOn = false;
+		liveThread.join();
+	}
+}
+
+void MainWindow::videoCaptureLoop() {
+	cap = cv::VideoCapture{ 0 };
+	cap.set(CV_CAP_PROP_FRAME_WIDTH, defaultCapDim.x);
+	cap.set(CV_CAP_PROP_FRAME_HEIGHT, defaultCapDim.y);
+	int frame_width = cap.get(CV_CAP_PROP_FRAME_WIDTH);
+	int frame_height = cap.get(CV_CAP_PROP_FRAME_HEIGHT);
+	capDimentions.x = frame_width;
+	capDimentions.y = frame_height;
+
+	image = Bitmap{ Int2{frame_width , frame_height} };
+
+	cv::Mat frame;
+	cv::Mat converted;
+
+	while (isLiveVideoOn && cap.isOpened()) {
+		cap >> frame;
+		if (frame.data) {
+			cv::cvtColor(frame, converted, cv::COLOR_RGB2RGBA);
+			cv::Mat dst = cv::Mat(converted.rows, converted.cols, CV_8UC4);
+			cv::flip(converted, dst, 0);
+
+			originalBuffer.resize(frame.cols, frame.rows);
+			originalBuffer.dataVector().assign((duck::UCharPixelBGR*)dst.datastart, (duck::UCharPixelBGR*)dst.dataend);
+			frameReady = true;
+			drawAction = DrawAction::DrawImage;
+			redraw();
+		}
+		else {
+			//thread_local::Sleep(30);
+			cv::waitKey(100);
+		}
+	}
+	cap.release();
+
+}
+
 
 std::wstring MainWindow::getSaveFileName() {
 	wchar_t filename[MAX_PATH] = L"";
@@ -386,6 +610,9 @@ void MainWindow::applyFilterBatch(duck::Image& src, duck::Image& dst)
 		case Filter::GHistogramExponentialEQ:
 			histogramExponentialEQ(dst, element.sigma);
 			break;
+		case Filter::GHog:
+			HOG(dst, this->hog, colorList);
+			break;
 		case Filter::CInverse:
 			invert(dst);
 			break;
@@ -400,7 +627,6 @@ void MainWindow::applyFilterBatch(duck::Image& src, duck::Image& dst)
 
 void MainWindow::onDraw(DeviceContext deviceContext) {
 
-
 	switch (drawAction)
 	{
 	case DrawAction::None:
@@ -413,6 +639,22 @@ void MainWindow::onDraw(DeviceContext deviceContext) {
 			duck::Image histogramsImage;
 			duck::makeHistogram(filteredBuffer, histogramsImage);
 			histograms.setPixels(histogramsImage.rawBegin());
+
+			if (isRecordingOn && saveVideoFileName.size() > 0) {
+				
+				cv::Mat frame;
+				frame = cv::Mat(filteredBuffer.height(), filteredBuffer.width(), CV_8UC4, filteredBuffer.rawBegin());
+				cv::cvtColor(frame, frame, cv::COLOR_RGBA2BGRA);
+				cv::flip(frame, frame, 0);
+				videoWriter.write(frame);
+				++savedFrames;
+				if (savedFrames >= maxSavedFrames) {
+					videoWriter.release();
+					isRecordingOn = false;
+					isLiveVideoOn = false;
+					liveThread.join();
+				}
+			}
 
 		}
 		drawAction = DrawAction::None;
@@ -438,6 +680,9 @@ void MainWindow::onDraw(DeviceContext deviceContext) {
 	deviceContext.drawBitmapStreched(histograms, histogramsRect);
 
 }
+
+
+
 
 void MainWindow::onItemChecked(Event e) {
 	LPNMLISTVIEW pnmv = (LPNMLISTVIEW)e.lparam;

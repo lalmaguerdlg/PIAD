@@ -5,6 +5,9 @@
 #include <algorithm>
 #include <numeric>
 #include <math.h>
+
+
+
 namespace duck
 {
 
@@ -29,6 +32,8 @@ namespace duck
 		L"Equalizacion simple",
 		L"Equalizacion uniforme",
 		L"Equalizacion exponencial",
+		L"Deteccion de personas (HOG)",
+
 		L"Invertir",
 		L"Binario",
 	};
@@ -340,4 +345,83 @@ namespace duck
 			pixel.r = pixel.g = pixel.b = pixel.r > 127 ? 255 : 0;
 		}
 	}
+
+
+	void Image2Mat(Image& in, cv::Mat& out) {
+		out = cv::Mat((int)in.height(), (int)in.width(), CV_8UC4, in.rawBegin());
+		//cv::cvtColor(out, out, cv::COLOR_RGBA2BGRA);
+		cv::flip(out, out, 0);
+	}
+
+	void Mat2Image(const cv::Mat& in, Image& out) {
+		cv::Mat dst = cv::Mat(in.rows, in.cols, CV_8UC4);
+		cv::flip(in, dst, 0);
+
+		out.resize(in.cols, in.rows);
+		out.dataVector().assign((duck::UCharPixelBGR*)dst.datastart, (duck::UCharPixelBGR*)dst.dataend);
+	}
+
+	void HOG(Image& out, const cv::HOGDescriptor& hog, const std::vector<cv::Scalar>& colorList) {
+
+		cv::Mat img;
+
+		Image2Mat(out, img);
+
+		const int escala = 1;
+
+		cv::Mat aux(img.rows / escala, img.cols / escala, CV_8U); //generamos dos imagenes reducidas en un tercio por lado o sea
+		cv::Mat aux2(img.rows / escala, img.cols / escala, CV_8U);//un noveno de tamaño para acelerar su proceso
+		cv::resize(img, aux, aux.size(), 0, 0, cv::INTER_LINEAR);
+		cvtColor(aux, aux2, CV_BGR2GRAY);
+		if (!img.data)
+			return;
+		//generamos un arreglo de rectangulo para encuadrar a la racita
+		std::vector<cv::Rect> found, found_filtered;
+		//le agregamos estilo para medir el tiempo de proceso, importante esta tecnica para
+		//medir el desempeño
+		//le pedimos que haga el trabajo de detectar
+		hog.detectMultiScale(aux2, found, 0, cv::Size(8, 8), cv::Size(32, 32), 1.05, 2);
+		//tiempo total de proceso
+		//imprimelo, sino pa'que
+		//contador de los ciclos para la cantidad de hallazgos
+		size_t i, j;
+		//comienza el ciclo
+		for (i = 0; i < found.size(); i++)
+		{
+			//genera al primer rectangulo de los hallados
+			cv::Rect r = found[i];
+			//checa si no se repiten lso rectangulos
+			for (j = 0; j < found.size(); j++)
+				if (j != i && (r & found[j]) == r)
+					break;
+			//si se acabo el arreglo lo mete al final del otro arreglo
+			//este solo tendra rectangulos no repetidos
+			if (j == found.size())
+				found_filtered.push_back(r);
+		}
+		//de los hallados, a dibujar
+		int found_count = found_filtered.size();
+		for (i = 0; i < found_filtered.size(); i++)
+		{
+			//dibuja el primero de los filtrados
+			cv::Rect r = found_filtered[i];
+			//dibujemos el rectangulo un poco mas grande de lo normal
+			//pa que la racita no quede mal encuadrada, el 3 es de la
+			//reduccion que habiamos hecho, estamos compensando
+			r.x *= escala;
+			r.x += cvRound(r.width*0.1);
+			r.width = cvRound(r.width*0.8*escala);
+			r.y = r.y*escala;
+			r.y += cvRound(r.height*0.07);
+			r.height = cvRound(r.height*0.8*escala);
+			int index = i % colorList.size();
+			cv::rectangle(img, r.tl(), r.br(), colorList[i], 3);
+		}
+
+		cv::putText(img, std::to_string(found_count), cv::Point2f(20, 70), cv::FONT_HERSHEY_PLAIN, 5, cv::Scalar(255, 255, 255, 255), 3);
+
+		Mat2Image(img, out);
+
+	}
+
 }

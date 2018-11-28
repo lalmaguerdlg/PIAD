@@ -2,6 +2,15 @@
 #include <vector>
 #include <map>
 #include <array>
+
+#include <opencv2\core\core.hpp>
+#include <opencv2\highgui\highgui.hpp>
+#include <opencv2\opencv.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/objdetect/objdetect.hpp>
+
+
+
 namespace duck
 {
 	using uchar = std::uint8_t;
@@ -83,6 +92,7 @@ namespace duck
 		GHistogramSimpleEQ,
 		GHistogramUniformEQ,
 		GHistogramExponentialEQ,
+		GHog,
 
 		CInverse,
 		CBinary,
@@ -163,4 +173,10 @@ namespace duck
 	// custom filters...
 	void invert(Image& out);
 	void binary(Image& out);
+
+	void Image2Mat(Image & in, cv::Mat & out);
+	void Mat2Image(const cv::Mat& in, Image& out);
+
+	void HOG(Image & out, const cv::HOGDescriptor & hog, const std::vector<cv::Scalar>& colorList);
+
 }

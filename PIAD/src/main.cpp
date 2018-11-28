@@ -11,4 +11,5 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	//Also add a 'font' param to default controls font style?
 	MainWindow window;
 	Application::run(window);
+	window.stopAndWaitForThread();
 }
