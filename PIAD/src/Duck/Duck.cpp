@@ -7,6 +7,32 @@
 #include <math.h>
 namespace duck
 {
+
+	std::array<std::wstring, (int)Filter::_LastEnumElement> FilterNames {
+		L"Escala de gris (Promedio)",
+		L"Escala de gris (Luminosity)",
+		L"Escala de gris (Luminance)",
+		L"Sepia",
+		L"Suma",
+		L"Resta",
+
+		L"Desenfoque",
+		L"Afilado",
+		L"Desenfoque Gaussiano",
+		L"Media ponderada",
+		L"Substraccion",
+		L"Sobel Horizontal",
+		L"Sobel Vertical",
+		L"Laplaciano",
+		L"Mediana",
+
+		L"Equalizacion simple",
+		L"Equalizacion uniforme",
+		L"Equalizacion exponencial",
+		L"Invertir",
+		L"Binario",
+	};
+
 	uchar clamp(int val, int min, int max) {
 		return val <= min ? min : val >= max ? max : val;
 	}
@@ -205,85 +231,100 @@ namespace duck
 		}
 	}
 	
-	/*
+	void calculateToneInfo(HistogramFrequency& hf, float totalPixels) {
+		
+		auto firstTone = hf.toneMap.begin();
+		firstTone->second.probability = firstTone->second.frequency / totalPixels;
+		firstTone->second.cdf = firstTone->second.frequency;
+		firstTone->second.probabilityCDF = firstTone->second.probability;
+
+		int max = firstTone->second.frequency;
+		std::map<int, ToneInfo>::iterator toneInfo;
+
+		for (toneInfo = std::next(firstTone); toneInfo != hf.toneMap.end(); ++toneInfo) {
+			toneInfo->second.probability = toneInfo->second.frequency / totalPixels;
+			toneInfo->second.cdf = std::prev(toneInfo)->second.cdf + toneInfo->second.frequency;
+			toneInfo->second.probabilityCDF = std::prev(toneInfo)->second.probabilityCDF + toneInfo->second.probability;
+			if (toneInfo->second.frequency > max)
+				max = toneInfo->second.frequency;
+		}
+		hf.maxFrequency = max;
+	}
+	
 	// Global filters
 	Histogram getHistogram(const Image& in) {
 		Histogram histogram;
 		float totalPixels = in.width() * in.height();
 		// calculating frequency values
 		for (const UCharPixelBGR& pixel : in.dataVector()) {
-			++histogram[0][pixel.r].frequency;
-			++histogram[1][pixel.g].frequency;
-			++histogram[2][pixel.b].frequency;
+			++histogram.red.toneMap[pixel.r].frequency;
+			++histogram.green.toneMap[pixel.g].frequency;
+			++histogram.blue.toneMap[pixel.b].frequency;
 		}
-		//int i = 0;
-		for (auto& histogramChannel : histogram) {
-			histogramChannel.begin()->second.probability = histogramChannel.begin()->second.frequency / totalPixels;
-			histogramChannel.begin()->second.cdf = histogramChannel.begin()->second.frequency;
-			histogramChannel.begin()->second.probabilityCDF = histogramChannel.begin()->second.probability;
-			for (auto& toneInfo = std::next(histogramChannel.begin()); toneInfo != histogramChannel.end(); ++toneInfo) {
-				toneInfo->second.probability = toneInfo->second.frequency / totalPixels;
-				toneInfo->second.cdf = std::prev(toneInfo)->second.cdf + toneInfo->second.frequency;
-				toneInfo->second.probabilityCDF = std::prev(toneInfo)->second.probabilityCDF + toneInfo->second.probability;
-			}
-			//++i;
-		}
+
+		calculateToneInfo(histogram.red, totalPixels);
+		calculateToneInfo(histogram.green, totalPixels);
+		calculateToneInfo(histogram.blue, totalPixels);
 		return histogram;
 	}
 
+	
 	void histogramSimpleEQ(Image& out) {
 		auto histogram = getHistogram(out);
 		for (auto& pixel : out.dataVector()) {
-			pixel.r = 255 * histogram[0][pixel.r].probabilityCDF;
-			pixel.g = 255 * histogram[1][pixel.g].probabilityCDF;
-			pixel.b = 255 * histogram[2][pixel.b].probabilityCDF;
+			pixel.r = 255 * histogram.red.toneMap[pixel.r].probabilityCDF;
+			pixel.g = 255 * histogram.green.toneMap[pixel.g].probabilityCDF;
+			pixel.b = 255 * histogram.blue.toneMap[pixel.b].probabilityCDF;
 		}
 	}
 
 	void histogramUniformEQ(Image& out) {
 		auto histogram = getHistogram(out);
 		for (auto& pixel : out.dataVector()) {
-			pixel.r = (std::prev(histogram[0].end())->first - histogram[0].begin()->first) * histogram[0][pixel.r].probabilityCDF + histogram[0].begin()->first;
-			pixel.g = (std::prev(histogram[1].end())->first - histogram[1].begin()->first) * histogram[1][pixel.g].probabilityCDF + histogram[1].begin()->first;
-			pixel.b = (std::prev(histogram[2].end())->first - histogram[2].begin()->first) * histogram[2][pixel.b].probabilityCDF + histogram[2].begin()->first;
+			pixel.r = (std::prev(histogram.red.toneMap.end())->first - histogram.red.toneMap.begin()->first) * histogram.red.toneMap[pixel.r].probabilityCDF + histogram.red.toneMap.begin()->first;
+			pixel.g = (std::prev(histogram.green.toneMap.end())->first - histogram.green.toneMap.begin()->first) * histogram.green.toneMap[pixel.g].probabilityCDF + histogram.green.toneMap.begin()->first;
+			pixel.b = (std::prev(histogram.blue.toneMap.end())->first - histogram.blue.toneMap.begin()->first) * histogram.blue.toneMap[pixel.b].probabilityCDF + histogram.blue.toneMap.begin()->first;
 		}
 	}
 
-	void histogramExponentialEQ(Image& out) {
+	void histogramExponentialEQ(Image& out, double alpha) {
 		auto histogram = getHistogram(out);
 		for (auto& pixel : out.dataVector()) {
-			pixel.r = histogram[0].begin()->first - (1.0f / 200.0f) * std::log(1.0f - histogram[0][pixel.r].probabilityCDF);
-			pixel.g = histogram[1].begin()->first - (1.0f / 200.0f) * std::log(1.0f - histogram[1][pixel.g].probabilityCDF);
-			pixel.b = histogram[2].begin()->first - (1.0f / 200.0f) * std::log(1.0f - histogram[2][pixel.b].probabilityCDF);
+			pixel.r = histogram.red.toneMap.begin()->first - (1.0f / alpha) * std::log(1.0f - histogram.red.toneMap[pixel.r].probabilityCDF);
+			pixel.g = histogram.green.toneMap.begin()->first - (1.0f / alpha) * std::log(1.0f - histogram.green.toneMap[pixel.g].probabilityCDF);
+			pixel.b = histogram.blue.toneMap.begin()->first - (1.0f / alpha) * std::log(1.0f - histogram.blue.toneMap[pixel.b].probabilityCDF);
 		}
 	}
-	//
-	void makeHistogram(const Image& in, HistogramImageData& out) {
-		const auto histogram = getHistogram(in);
-		const auto maxFreq = [](const std::pair<int, ToneInfo>& p1, const std::pair<int, ToneInfo>& p2) {
-			return p1.second.frequency < p2.second.frequency;
-		};
-		const auto maxRedFrequency = std::max_element(histogram[0].begin(), histogram[0].end(), maxFreq)->second.frequency;
-		const auto maxGreenFrequency = std::max_element(histogram[1].begin(), histogram[1].end(), maxFreq)->second.frequency;
-		const auto maxBlueFrequency = std::max_element(histogram[2].begin(), histogram[2].end(), maxFreq)->second.frequency;
-		std::fill(out.redChannel.begin(), out.redChannel.end(), UCharPixelBGR{});
-		std::fill(out.greenChannel.begin(), out.greenChannel.end(), UCharPixelBGR{});
-		std::fill(out.blueChannel.begin(), out.blueChannel.end(), UCharPixelBGR{});
-		const auto fillFrequencies = []
-		(const HistogramChannel& channel, HistogramPixels& pixels, float maxFrequency, const UCharPixelBGR& fillColor) {
-			for (auto& val : channel) {
-				int row = (int)(val.second.frequency / maxFrequency * 127.0f);
-				for (int i = 0; i <= row; i++) {
-					pixels[(i * 256) + val.first] = fillColor;
-				}
-			}
-		};
-		fillFrequencies(histogram[0], out.redChannel, maxRedFrequency, UCharPixelBGR{ 64, 64, 255 });
-		fillFrequencies(histogram[1], out.greenChannel, maxGreenFrequency, UCharPixelBGR{ 64, 255, 64 });
-		fillFrequencies(histogram[2], out.blueChannel, maxBlueFrequency, UCharPixelBGR{ 255, 64, 66 });
-	}
+	
 
 	//
+	void makeHistogram(const Image& in, Image& out) {
+		out.resize(256, 256);
+		const auto histogram = getHistogram(in);
+
+		const auto maxValue = std::max({ histogram.red.maxFrequency, histogram.green.maxFrequency, histogram.blue.maxFrequency });
+
+		std::fill(out.dataVector().begin(), out.dataVector().end(), UCharPixelBGR{});
+
+		const auto fillFrequencies = []
+		(const HistogramFrequency& channel, std::vector<UCharPixelBGR>& pixels, float maxFrequency, const UCharPixelBGR& fillColor) {
+			for (auto& val : channel.toneMap) {
+				int row = (int)(val.second.frequency / maxFrequency * 255.0f);
+				for (int i = 0; i <= row; i++) {
+					pixels[(i * 256) + val.first].r += fillColor.r;
+					pixels[(i * 256) + val.first].g += fillColor.g;
+					pixels[(i * 256) + val.first].b += fillColor.b;
+				}
+
+			}
+		};
+		fillFrequencies(histogram.red, out.dataVector(), maxValue, UCharPixelBGR{ 0, 0, 255 });
+		fillFrequencies(histogram.green, out.dataVector(), maxValue, UCharPixelBGR{ 0, 255, 0 });
+		fillFrequencies(histogram.blue, out.dataVector(), maxValue, UCharPixelBGR{ 255, 0, 0 });
+	}
+
+	
+	// Custom ...
 	void invert(Image& out) {
 		for (UCharPixelBGR& pixel : out.dataVector()) {
 			pixel.r = (uchar)~pixel.r;
@@ -298,5 +339,5 @@ namespace duck
 		for (UCharPixelBGR& pixel : out.dataVector()) {
 			pixel.r = pixel.g = pixel.b = pixel.r > 127 ? 255 : 0;
 		}
-	}*/
+	}
 }

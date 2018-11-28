@@ -90,7 +90,12 @@
   <ItemGroup>
     <ClInclude Include="src\Duck\Duck.h" />
     <ClInclude Include="src\MainWindow.h" />
+    <ClInclude Include="src\resource1.h" />
     <ClInclude Include="src\SaveImage.hpp" />
+    <ClInclude Include="src\ValueSelectorDialog.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="src\Resource.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -52,7 +52,60 @@ namespace duck
 	public:
 		Kernel(uint width, uint height, DataVector bytes, uint weight = 0);
 		uint weight() const;
+		static Kernel Identity() {
+			return { 3, 3, {
+					0, 0, 0,
+					0, 1, 0,
+					0, 0, 0
+				} };
+		}
 	};
+
+	enum class Filter {
+		None = -1,
+		PGrayScaleAverage = 0,
+		PGrayScaleLuminosity,
+		PGrayScaleLuminance,
+		PSepia,
+		PAddition,
+		PSubstraction,
+
+		LBlur,
+		LSharp,
+		LGaussian,
+		LWeightedAverage,
+		LSubstraction,
+		LSobelX,
+		LSobelY,
+		LLaplacian,
+		LMedian,
+
+		GHistogramSimpleEQ,
+		GHistogramUniformEQ,
+		GHistogramExponentialEQ,
+
+		CInverse,
+		CBinary,
+		_LastEnumElement,
+	};
+
+	/*enum class PointFilter {
+		GrayScaleAverage = 0,
+		GrayScaleLuminosity,
+		GrayScaleLuminance,
+		Sepia,
+		Addition,
+		Substraction,
+	};
+
+	enum class LocalFilter {
+
+	};
+
+	enum class GlobalFilter {
+
+	};*/
+	extern std::array<std::wstring, (int)Filter::_LastEnumElement> FilterNames;
 
 	// Helpers...
 	uchar clamp(int val, int min, int max);
@@ -70,31 +123,44 @@ namespace duck
 	void add(Image& out, uchar value);
 	void substract(Image& out, uchar value);
 	
-	/*
-	// Global filters
+	
+	// Histogram
 	struct ToneInfo {
 		float frequency = 0.0f;
 		float cdf = 0.0f;
 		float probability = 0.0f;
 		float probabilityCDF = 0.0f;
 	};
-	using HistogramChannel = std::map<int, ToneInfo>;
-	using Histogram = std::array<HistogramChannel, 3>;
-	Histogram getHistogram(const Image& in);
-	void histogramSimpleEQ(Image& out);
-	void histogramUniformEQ(Image& out);
-	void histogramExponentialEQ(Image& out);
-	
-	//histogram makers...
-	using HistogramPixels = std::array<UCharPixelBGR, 256 * 128>;
-	struct HistogramImageData {
-		HistogramPixels redChannel, greenChannel, blueChannel;
+
+	struct HistogramFrequency {
+		std::map<int, ToneInfo> toneMap;
+		int maxFrequency;
+	};
+	//using Histogram = std::array<HistogramChannel, 3>;
+
+	struct Histogram {
+		HistogramFrequency red;
+		HistogramFrequency green;
+		HistogramFrequency blue;
 	};
 	
+	Histogram getHistogram(const Image& in);
+
+	//histogram makers...
+	using HistogramPixels = std::array<UCharPixelBGR, 256 * 256>;
+
+	// Global filters
+	
+	void histogramSimpleEQ(Image& out);
+	void histogramUniformEQ(Image& out);
+	void histogramExponentialEQ(Image & out, double alpha);
+	
+
 	// makes a 256 * 128 pixel image data 
-	void makeHistogram(const Image& in, HistogramImageData& out);
+	void makeHistogram(const Image& in, Image& out);
+	
 	
 	// custom filters...
 	void invert(Image& out);
-	void binary(Image& out);*/
+	void binary(Image& out);
 }

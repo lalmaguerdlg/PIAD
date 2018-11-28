@@ -12,46 +12,71 @@ enum class DrawAction {
 	SaveImage,
 };
 
+struct FilterElement {
+	duck::Filter filter;
+	double sigma = 0;
+	bool enabled = true;
+	duck::Kernel kernel = duck::Kernel::Identity();
+	bool useKernel = false;
+	int initCount = 0;
+};
+
 class MainWindow : public WindowFrame
 {
 private:
 
-	DrawAction currentAction;
+	DrawAction drawAction;
 
 	Menu menu;
 	Menu fileMenu;
+	Menu filtersMenu;
+	Menu pointFiltersMenu;
+	Menu localFiltersMenu;
+	Menu globalFiltersMenu;
+	Menu customFiltersMenu;
 
-	Button buttonAgregar;
 	Button buttonLimpiar;
 	Button buttonEliminar;
-	RadioButton radioButtonA;
-	RadioButton radioButtonB;
-	RadioButton radioButtonC;
 	ListView listView;
 
-
+	std::vector<FilterElement> filterBatch;
 
 	Bitmap image;
-	duck::Image buffer;
+	duck::Image originalBuffer;
+	duck::Image filteredBuffer;
 	
-	Bitmap histograms{ Int2{400, 126} };
+	Bitmap histograms{ Int2{256, 256} };
 	std::vector<Pixel32> histogramsBuffer;
 	const Rect imageRect{ 0, 0, 400, 300 };
-	const Rect histogramsRect{ 0, 300, 400, 126 };
+	const Rect histogramsRect{ 0, 300, 400, 122 };
 	const Rect listViewRect{ 400, 100, 400, 280 };
 public:
 	MainWindow() : WindowFrame(L"Ventana", Rect{ 120, 120, 800, 480 }) {}
 private:
 	void onCreate() override;
+	void renderFilterBatch();
 	void onDraw(DeviceContext deviceContext) override;
 	void onItemChecked(Event e);
 
-	void onButtonAClick(Event e);
-	void onButtonBClick(Event e);
-	void onRadioButtonAClick(Event e);
+	void onButtonLimpiarClick(Event e);
+	void onButtonEliminarClick(Event e);
+
+	void addFilterToBatch(const FilterElement & element);
+
 	void onFileMenuSelect(Event e);
+	void onPointFiltersMenuSelect(Event e);
+	void onLocalFiltersMenuSelect(Event e);
+	void onGlobalFiltersMenuSelect(Event e);
+	void onCustomFiltersMenuSelect(Event e);
 	void loadImage();
 	void saveImage();
 	std::wstring getSaveFileName();
 	std::wstring getOpenFileName();
+
+	void applyFilterBatch(duck::Image & src, duck::Image& dst);
+
+	void applyFilterBatch();
+
+
+
 };
