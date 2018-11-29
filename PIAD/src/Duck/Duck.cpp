@@ -23,10 +23,14 @@ namespace duck
 		L"Afilado",
 		L"Desenfoque Gaussiano",
 		L"Media ponderada",
-		L"Substraccion",
-		L"Sobel Horizontal",
-		L"Sobel Vertical",
+		L"Substraccion de la media",
+		L"Sobel Norte",
+		L"Sobel Sur",
+		L"Sobel Este",
+		L"Sobel Oeste",
+		L"Sobel",
 		L"Laplaciano",
+		L"Menos laplaciano",
 		L"Mediana",
 
 		L"Equalizacion simple",
@@ -35,7 +39,7 @@ namespace duck
 		L"Deteccion de personas (HOG)",
 
 		L"Invertir",
-		L"Binario",
+		L"Binario"
 	};
 
 	uchar clamp(int val, int min, int max) {
@@ -180,6 +184,84 @@ namespace duck
 		return Kernel{ 3, 3, std::vector<int>(std::begin(k), std::end(k)), 1000 };
 	}
 
+
+	void toSobel(const Image& in, Image& out) {
+		Kernel filter_x {3, 3, 
+			{ -1, 0,  1,
+			-2,  0, 2,
+			 -1, 0,  1}, 1 };
+		Kernel filter_y {3, 3, 
+			{ -1, -2,  -1,
+			0,  0, 0,
+			 1, 2,  1}, 1 };
+
+		Image C = in;
+		Image F = in;
+		convolve(filter_x, in, C);
+		convolve(filter_y, in, F);
+
+		UCharPixelBGR* colP = (UCharPixelBGR*)C.rawBegin();
+		UCharPixelBGR* rowP = (UCharPixelBGR*)F.rawBegin();
+		
+		UCharPixelBGR sum{};
+		
+		for (auto& pixel : out.dataVector()) {
+			sum.r = sqrt( (colP->r * colP->r) + (rowP->r * rowP->r) );
+			sum.g = sqrt( (colP->g * colP->g) + (rowP->g * rowP->g) );
+			sum.b = sqrt( (colP->b * colP->b) + (rowP->b * rowP->b) );
+			pixel.r = clamp(sum.r, 0, 255);
+			pixel.g = clamp(sum.g, 0, 255);
+			pixel.b = clamp(sum.b, 0, 255);
+			colP++;
+			rowP++;
+		}
+
+		/*
+		float filter_x[3][3] =
+		{ { -1, 0,  1},
+		{-2,  0, 2},
+		{ -1, 0,  1} };
+		float filter_y[3][3] =
+		{ { -1, -2,  -1},
+		{0,  0, 0},
+		{ 1, 2,  1} };
+
+		UCharPixelBGR sum_x{};
+		UCharPixelBGR sum_y{};
+		UCharPixelBGR sum{};
+		int width = in.width();
+		int height = in.height();
+		for (int i = 1; i < height - 1; i++)
+			for (int j = 1; j < width - 1; j++)
+			{
+				sum_x.r = 0;
+				sum_x.g = 0;
+				sum_x.b = 0;
+				sum_y.r = 0;
+				sum_y.g = 0;
+				sum_y.b = 0;
+				for (int a = -1; a <= 1; a++)
+					for (int b = -1; b <= 1; b++) {
+						sum_x.r += in.dataVector()[(i + a)*width + j + b].r * filter_x[a + 1][b + 1];
+						sum_x.g += in.dataVector()[(i + a)*width + j + b].g * filter_x[a + 1][b + 1];
+						sum_x.b += in.dataVector()[(i + a)*width + j + b].b * filter_x[a + 1][b + 1];
+
+						sum_y.r += in.dataVector()[(i + a)*width + j + b].r * filter_y[a + 1][b + 1];
+						sum_y.g += in.dataVector()[(i + a)*width + j + b].g * filter_y[a + 1][b + 1];
+						sum_y.b += in.dataVector()[(i + a)*width + j + b].b * filter_y[a + 1][b + 1];
+					}
+				sum.r = (abs(sum_x.r) + abs(sum_y.r)) / 6;
+				sum.g = (abs(sum_x.g) + abs(sum_y.g)) / 6;
+				sum.b = (abs(sum_x.b) + abs(sum_y.b)) / 6;
+				sum.r = clamp(sum.r, 0, 255);
+				sum.g = clamp(sum.g, 0, 255);
+				sum.b = clamp(sum.b, 0, 255);
+				out.dataVector()[i* width + j].r = sum.r;
+				out.dataVector()[i* width + j].g = sum.g;
+				out.dataVector()[i* width + j].b = sum.b;
+			}
+			*/
+	}
 	
 	// Point filters...
 	void toGrayScaleAverage(Image& out) {

@@ -44,10 +44,15 @@ void MainWindow::onCreate() {
 		L"Desenfoque gaussiano",
 		L"Media ponderada",
 		L"Substracción de la media",
-		L"Sobel horizontal",
-		L"Sobel vertical",
+		L"Sobel Norte",
+		L"Sobel Sur",
+		L"Sobel Este",
+		L"Sobel Oeste",
+		L"Sobel",
 		L"Laplaciano",
-		L"Mediana"
+		L"Menos laplaciano",
+		L"Mediana",
+		//L"Menos media",
 	});
 	globalFiltersMenu.addItems({
 		L"Ecualización simple",
@@ -234,30 +239,56 @@ void MainWindow::onLocalFiltersMenuSelect(Event e) {
 	}
 			break;
 	case 4: {
-		//Substraction
+		//Substraction de la media
 		element.filter = duck::Filter::LSubstraction;
 		element.kernel = duck::Kernel{ 3, 3,{ -1, -1, -1, -1, 8, -1, -1, -1, -1 }, 1 };
-	}
-			break;
+	} break;
 	case 5: {
-		//Sobel X
-		element.filter = duck::Filter::LSobelX;
-		element.kernel = duck::Kernel{ 3, 3,{ -1, 0, 1, -2, 0, 2, -1, 0, 1 }, 1 };
-	}
-			break;
+		//Sobel North
+		element.filter = duck::Filter::LSobelNorth;
+		element.kernel = duck::Kernel{ 3, 3,{ -1, -2, -1, 0, 0, 0, 1, 2, 1 }, 1 };
+	} break;
 	case 6: {
-		//Sobel Y
-		element.filter = duck::Filter::LSobelY;
+		//Sobel South
+		element.filter = duck::Filter::LSobelSouth;
 		element.kernel = duck::Kernel{ 3, 3,{ 1, 2, 1, 0, 0, 0, -1, -2, -1 }, 1 };
 	}
 			break;
 	case 7: {
-		//Laplacian
-		element.filter = duck::Filter::LLaplacian;
-		element.kernel = duck::Kernel{ 3, 3,{ 0, -1, 0, -1, 4, -1, 0, -1, 0 }, 1 };
+		//Sobel East
+		element.filter = duck::Filter::LSobelEast;
+		element.kernel = duck::Kernel{ 3, 3,{ -1, 0, 1, -2, 0, 2, -1, 0, 1 }, 1 };
 	}
 			break;
 	case 8: {
+		//Sobel West
+		element.filter = duck::Filter::LSobelWest;
+		element.kernel = duck::Kernel{ 3, 3,{ 1, 0, -1, 2, 0, -2, 1, 0, -1 }, 1 };
+	} break;
+	case 9: {
+		//Sobel
+		element.filter = duck::Filter::LSobel;
+		element.useKernel = false;
+	} break;
+	case 10: {
+		//Laplacian
+		element.filter = duck::Filter::LLaplacian;
+		element.kernel = duck::Kernel{ 3, 3,
+			{ 0, -1, 0,
+			-1, 4, -1,
+			0, -1, 0 }, 1 };
+	} break;
+	case 11: {
+		//Menos Laplaciano
+		element.filter = duck::Filter::LMenosLaplacian;
+		element.kernel = duck::Kernel{ 3, 3,
+			{ 0, -1, 0, 
+			-1, 5, -1, 
+			0, -1, 0 }, 1 };
+	}
+			break;
+	case 12: {
+		// Mediana
 		element.filter = duck::Filter::LMedian;
 		element.useKernel = false;
 	}break;
@@ -591,11 +622,21 @@ void MainWindow::applyFilterBatch(duck::Image& src, duck::Image& dst)
 		case Filter::LGaussian:
 		case Filter::LWeightedAverage:
 		case Filter::LSubstraction:
-		case Filter::LSobelX:
-		case Filter::LSobelY:
-		case Filter::LLaplacian: {
+		case Filter::LSobelNorth:
+		case Filter::LSobelSouth:
+		case Filter::LSobelEast:
+		case Filter::LSobelWest:
+		case Filter::LLaplacian:
+		case Filter::LMenosLaplacian:
+		{
 			Image tmp = dst;
 			convolve(element.kernel, tmp, dst);
+		}	break;
+		case Filter::LSobel:
+		{
+			Image tmp = dst;
+			toSobel(tmp, dst);
+			//convolve(element.kernel, tmp, dst);
 		}	break;
 		case Filter::LMedian: {
 			Image tmp = dst;

@@ -84,9 +84,13 @@ namespace duck
 		LGaussian,
 		LWeightedAverage,
 		LSubstraction,
-		LSobelX,
-		LSobelY,
+		LSobelNorth,
+		LSobelSouth,
+		LSobelEast,
+		LSobelWest,
+		LSobel,
 		LLaplacian,
+		LMenosLaplacian,
 		LMedian,
 
 		GHistogramSimpleEQ,
@@ -124,7 +128,11 @@ namespace duck
 	void convolve(const Kernel& kernel, const Image& in, Image& out);
 	void convolveMiddle(const Image& in, Image& out);
 	Kernel generateGaussian(double sigma);
+
+	void toSobel(const Image & in, Image & out);
 	
+
+
 	// Point filters...
 	void toGrayScaleAverage(Image& out);
 	void toGrayScaleLuminosity(Image& out);
