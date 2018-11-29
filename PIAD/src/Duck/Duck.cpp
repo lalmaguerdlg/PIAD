@@ -215,52 +215,6 @@ namespace duck
 			colP++;
 			rowP++;
 		}
-
-		/*
-		float filter_x[3][3] =
-		{ { -1, 0,  1},
-		{-2,  0, 2},
-		{ -1, 0,  1} };
-		float filter_y[3][3] =
-		{ { -1, -2,  -1},
-		{0,  0, 0},
-		{ 1, 2,  1} };
-
-		UCharPixelBGR sum_x{};
-		UCharPixelBGR sum_y{};
-		UCharPixelBGR sum{};
-		int width = in.width();
-		int height = in.height();
-		for (int i = 1; i < height - 1; i++)
-			for (int j = 1; j < width - 1; j++)
-			{
-				sum_x.r = 0;
-				sum_x.g = 0;
-				sum_x.b = 0;
-				sum_y.r = 0;
-				sum_y.g = 0;
-				sum_y.b = 0;
-				for (int a = -1; a <= 1; a++)
-					for (int b = -1; b <= 1; b++) {
-						sum_x.r += in.dataVector()[(i + a)*width + j + b].r * filter_x[a + 1][b + 1];
-						sum_x.g += in.dataVector()[(i + a)*width + j + b].g * filter_x[a + 1][b + 1];
-						sum_x.b += in.dataVector()[(i + a)*width + j + b].b * filter_x[a + 1][b + 1];
-
-						sum_y.r += in.dataVector()[(i + a)*width + j + b].r * filter_y[a + 1][b + 1];
-						sum_y.g += in.dataVector()[(i + a)*width + j + b].g * filter_y[a + 1][b + 1];
-						sum_y.b += in.dataVector()[(i + a)*width + j + b].b * filter_y[a + 1][b + 1];
-					}
-				sum.r = (abs(sum_x.r) + abs(sum_y.r)) / 6;
-				sum.g = (abs(sum_x.g) + abs(sum_y.g)) / 6;
-				sum.b = (abs(sum_x.b) + abs(sum_y.b)) / 6;
-				sum.r = clamp(sum.r, 0, 255);
-				sum.g = clamp(sum.g, 0, 255);
-				sum.b = clamp(sum.b, 0, 255);
-				out.dataVector()[i* width + j].r = sum.r;
-				out.dataVector()[i* width + j].g = sum.g;
-				out.dataVector()[i* width + j].b = sum.b;
-			}
-			*/
 	}
 	
 	// Point filters...
