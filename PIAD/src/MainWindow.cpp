@@ -378,9 +378,10 @@ void MainWindow::loadImage() {
 	if (filename.length() > 0) {
 		image.load(&filename[0]);
 		originalBuffer.resize(image.dimension().x, image.dimension().y);
+		filteredBuffer.resize(image.dimension().x, image.dimension().y);
 
 		image.clonePixels(originalBuffer.rawBegin());
-		filteredBuffer = originalBuffer;
+		filteredBuffer.dataVector().assign(originalBuffer.dataVector().begin(), originalBuffer.dataVector().end());
 
 		drawAction = DrawAction::DrawImage;
 		redraw();
@@ -411,6 +412,8 @@ void MainWindow::snapshot() {
 	cv::Mat frame;
 	cv::Mat converted;
 	image = Bitmap{ Int2{frame_width , frame_height} };
+	originalBuffer.resize(frame_width, frame_height);
+	filteredBuffer.resize(frame_width, frame_height);
 	while (cap.isOpened()) {
 		cap >> frame;
 		if (frame.data) {
@@ -536,6 +539,9 @@ void MainWindow::videoCaptureLoop() {
 	cv::Mat frame;
 	cv::Mat converted;
 
+	originalBuffer.resize(frame_width, frame_height);
+	filteredBuffer.resize(frame_width, frame_height);
+
 	while (isLiveVideoOn && cap.isOpened()) {
 		cap >> frame;
 		if (frame.data) {
@@ -543,11 +549,41 @@ void MainWindow::videoCaptureLoop() {
 			cv::Mat dst = cv::Mat(converted.rows, converted.cols, CV_8UC4);
 			cv::flip(converted, dst, 0);
 
-			originalBuffer.resize(frame.cols, frame.rows);
 			originalBuffer.dataVector().assign((duck::UCharPixelBGR*)dst.datastart, (duck::UCharPixelBGR*)dst.dataend);
-			frameReady = true;
-			drawAction = DrawAction::DrawImage;
-			redraw();
+			applyFilterBatch(originalBuffer, filteredBuffer);
+			image.setPixels(filteredBuffer.rawBegin(), handle());
+
+			duck::Image histogramsImage;
+			duck::makeHistogram(filteredBuffer, histogramsImage);
+			histograms.setPixels(histogramsImage.rawBegin(), handle());
+			//frameReady = true;
+			//drawAction = DrawAction::DrawImage;
+
+			if (isRecordingOn && saveVideoFileName.size() > 0) {
+
+				cv::Mat frame;
+				frame = cv::Mat(filteredBuffer.height(), filteredBuffer.width(), CV_8UC4, filteredBuffer.rawBegin());
+				cv::cvtColor(frame, frame, cv::COLOR_RGBA2BGRA);
+				cv::flip(frame, frame, 0);
+				videoWriter.write(frame);
+				++savedFrames;
+				if (savedFrames >= maxSavedFrames) {
+					videoWriter.release();
+					isRecordingOn = false;
+					//isLiveVideoOn = false;
+					//liveThread.join();
+				}
+			}
+
+
+			//GetDC / ReleaseDC;
+			DeviceContextHandle hdc = GetDC(handle());
+			DeviceContext deviceContext{ hdc };
+			deviceContext.drawBitmapStreched(image, imageRect);
+			deviceContext.drawBitmapStreched(histograms, histogramsRect);
+			ReleaseDC(handle(), deviceContext.handle());
+			//window.onDraw(window.deviceContext());
+			//redraw();
 		}
 		else {
 			//thread_local::Sleep(30);
@@ -593,7 +629,7 @@ std::wstring MainWindow::getOpenFileName() {
 void MainWindow::applyFilterBatch(duck::Image& src, duck::Image& dst)
 {
 	using namespace duck;
-	dst = src;
+	dst.dataVector().assign(src.dataVector().begin(), src.dataVector().end());
 	for (auto& element : filterBatch) {
 		if (!element.enabled)
 			continue;
@@ -681,7 +717,7 @@ void MainWindow::onDraw(DeviceContext deviceContext) {
 			duck::makeHistogram(filteredBuffer, histogramsImage);
 			histograms.setPixels(histogramsImage.rawBegin());
 
-			if (isRecordingOn && saveVideoFileName.size() > 0) {
+			/*if (isRecordingOn && saveVideoFileName.size() > 0) {
 				
 				cv::Mat frame;
 				frame = cv::Mat(filteredBuffer.height(), filteredBuffer.width(), CV_8UC4, filteredBuffer.rawBegin());
@@ -695,7 +731,7 @@ void MainWindow::onDraw(DeviceContext deviceContext) {
 					isLiveVideoOn = false;
 					liveThread.join();
 				}
-			}
+			}*/
 
 		}
 		drawAction = DrawAction::None;

@@ -280,7 +280,7 @@ namespace duck
 		firstTone->second.probabilityCDF = firstTone->second.probability;
 
 		int max = firstTone->second.frequency;
-		std::map<int, ToneInfo>::iterator toneInfo;
+		std::unordered_map<int, ToneInfo>::iterator toneInfo;
 
 		for (toneInfo = std::next(firstTone); toneInfo != hf.toneMap.end(); ++toneInfo) {
 			toneInfo->second.probability = toneInfo->second.frequency / totalPixels;

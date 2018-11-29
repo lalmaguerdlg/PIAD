@@ -325,6 +325,22 @@ namespace WinCape
 		getBitmapInfo(deviceContext, bitmapInfo);
 		SetDIBits(deviceContext, handle(), 0, bitmapInfo.bmiHeader.biHeight, buffer, &bitmapInfo, DIB_RGB_COLORS);
 	}
+	void Bitmap::clonePixels(void * buffer, BaseHandle windowHandle) const
+	{
+		//Must call GetDIBits twice...
+		//https://stackoverflow.com/questions/26233848/c-read-pixels-with-getdibits
+		const DeviceContextHandle deviceContext = GetDC(windowHandle);
+		BITMAPINFO bitmapInfo = {};
+		getBitmapInfo(deviceContext, bitmapInfo);
+		GetDIBits(deviceContext, handle(), 0, bitmapInfo.bmiHeader.biHeight, buffer, &bitmapInfo, DIB_RGB_COLORS);
+	}
+	void Bitmap::setPixels(void * buffer, BaseHandle windowHandle)
+	{
+		const DeviceContextHandle deviceContext = GetDC(windowHandle);
+		BITMAPINFO bitmapInfo = {};
+		getBitmapInfo(deviceContext, bitmapInfo);
+		SetDIBits(deviceContext, handle(), 0, bitmapInfo.bmiHeader.biHeight, buffer, &bitmapInfo, DIB_RGB_COLORS);
+	}
 	Bitmap::~Bitmap()
 	{
 		DeleteObject(handle());

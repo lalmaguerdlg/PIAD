@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <map>
+#include <unordered_map>
 #include <array>
 
 #include <opencv2\core\core.hpp>
@@ -151,7 +152,7 @@ namespace duck
 	};
 
 	struct HistogramFrequency {
-		std::map<int, ToneInfo> toneMap;
+		std::unordered_map<int, ToneInfo> toneMap;
 		int maxFrequency;
 	};
 	//using Histogram = std::array<HistogramChannel, 3>;

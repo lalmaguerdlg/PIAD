@@ -133,6 +133,8 @@ namespace WinCape
 		Int2 dimension() const;
 		void clonePixels(void* buffer) const;
 		void setPixels(void* buffer);
+		void clonePixels(void* buffer, BaseHandle windowHandle) const;
+		void setPixels(void* buffer, BaseHandle windowHandle);
 		~Bitmap();
 	};
 	class WINCAPE_API DeviceContext final : public HasHandle<DeviceContextHandle>
